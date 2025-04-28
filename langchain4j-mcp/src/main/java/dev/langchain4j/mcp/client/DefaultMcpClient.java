@@ -353,6 +353,10 @@ public class DefaultMcpClient implements McpClient {
         }
     }
 
+    public static Builder builder(){
+        return new Builder();
+    }
+
     public static class Builder {
 
         private String toolExecutionTimeoutErrorMessage;
