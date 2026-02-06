@@ -6,6 +6,13 @@ import static dev.langchain4j.model.openai.internal.OpenAiUtils.finishReasonFrom
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.tokenUsageFrom;
 import static java.util.stream.Collectors.toList;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicReference;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
@@ -23,13 +30,6 @@ import dev.langchain4j.model.openai.internal.completion.CompletionResponse;
 import dev.langchain4j.model.openai.internal.shared.Usage;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Queue;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * This class needs to be thread safe because it is called when a streaming result comes back
@@ -161,26 +161,27 @@ public class OpenAiStreamingResponseBuilder {
         }
 
         if (delta.toolCalls() != null && !delta.toolCalls().isEmpty()) {
-            ToolCall toolCall = delta.toolCalls().get(0);
+            for (final ToolCall toolCall : delta.toolCalls()) {
 
-            ToolExecutionRequestBuilder builder = this.indexToToolExecutionRequestBuilder.computeIfAbsent(
-                    toolCall.index(), idx -> new ToolExecutionRequestBuilder());
+                ToolExecutionRequestBuilder builder = this.indexToToolExecutionRequestBuilder.computeIfAbsent(
+                        toolCall.index(), idx -> new ToolExecutionRequestBuilder());
 
-            if (toolCall.id() != null) {
-                if (accumulateToolCallId) {
-                    builder.idBuilder.append(toolCall.id());
-                } else {
-                    builder.idBuilder.setLength(0);
-                    builder.idBuilder.append(toolCall.id());
+                if (toolCall.id() != null) {
+                    if (accumulateToolCallId) {
+                        builder.idBuilder.append(toolCall.id());
+                    } else {
+                        builder.idBuilder.setLength(0);
+                        builder.idBuilder.append(toolCall.id());
+                    }
                 }
-            }
 
-            FunctionCall functionCall = toolCall.function();
-            if (functionCall.name() != null) {
-                builder.nameBuilder.append(functionCall.name());
-            }
-            if (functionCall.arguments() != null) {
-                builder.argumentsBuilder.append(functionCall.arguments());
+                FunctionCall functionCall = toolCall.function();
+                if (functionCall.name() != null) {
+                    builder.nameBuilder.append(functionCall.name());
+                }
+                if (functionCall.arguments() != null) {
+                    builder.argumentsBuilder.append(functionCall.arguments());
+                }
             }
         }
     }
